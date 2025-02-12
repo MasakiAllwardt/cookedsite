@@ -6,20 +6,25 @@ async function startSearch() {
     // Construct the Google Images search URL
     const googleImagesUrl = `https://www.google.com/search?q=${encodeURIComponent(collegeName)}&tbm=isch`;
 
-    // Use a proxy service to bypass CORS
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(googleImagesUrl)}`;
+    // Use CORS Anywhere as a proxy
+    const proxyUrl = `https://cors-anywhere.herokuapp.com/${googleImagesUrl}`;
     const response = await fetch(proxyUrl);
-    const data = await response.json();
+    const htmlText = await response.text();
 
     // Parse the HTML content to extract image URLs
     const parser = new DOMParser();
-    const doc = parser.parseFromString(data.contents, 'text/html');
+    const doc = parser.parseFromString(htmlText, 'text/html');
     const imageElements = doc.querySelectorAll('img');
     const imageUrls = Array.from(imageElements)
-      .map(img => img.src)
-      .filter(src => src.startsWith('http')); // Filter out invalid URLs
+      .map(img => img.dataset.src || img.src) // Extract from data-src or src
+      .filter(src => src && src.startsWith('http')) // Filter out invalid URLs
+      .slice(0, 200); // Limit to 200 images
 
-    flashImages(imageUrls.slice(0, 200)); // Limit to 200 images
+    if (imageUrls.length === 0) {
+      throw new Error('No images found');
+    }
+
+    flashImages(imageUrls);
   } catch (error) {
     console.error('Error fetching images:', error);
     alert('Failed to fetch images. Please try again.');
